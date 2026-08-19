@@ -1,10 +1,8 @@
 # zynq-attention-accelerator
 
-**An INT8 attention accelerator, co-designed from a cycle-accurate C++ model down to RTL on a
-Zynq-7000 SoC — and verified to match at every step.**
+**An INT8 attention accelerator, co-designed from a cycle-accurate C++ model down to RTL on a Zynq-7000 SoC and verified to match at every step.**
 
-> **Status: Phase 0 in progress (started August 2026).** The architectural model is being built
-> now. No performance numbers are published yet, and none will be until they are measured. See
+> **Status: Phase 0 in progress (started August 2026).** The architectural model is being built now. No performance numbers are published yet, and none will be until they are measured. See
 > [`docs/RESULTS.md`](docs/RESULTS.md) for what has and hasn't been quantified.
 
 ---

@@ -47,16 +47,10 @@ def stable_softmax(scores: torch.Tensor) -> torch.Tensor:
     Returns:
         (N, N) float32, every row non-negative and summing to 1.
     """
-    # TODO(human): implement the stable softmax.
-    #
-    # Useful pieces:
-    #   scores.max(dim=-1, keepdim=True).values  -> (N, 1) row maxima
-    #   torch.exp(x)                             -> elementwise exponential
-    #   x.sum(dim=-1, keepdim=True)              -> (N, 1) row sums
-    #
-    # keepdim=True matters: without it the reduction returns shape (N,), which broadcasts against
-    # (N, N) along the wrong axis and silently normalizes columns instead of rows.
-    raise NotImplementedError("stable_softmax is not implemented yet")
+    row_max = scores.max(dim=-1, keepdim=True).values   # Find the maximum in each row (N, 1)
+    shifted = scores - row_max                          # largest entry per row is now 0
+    exp_scores = torch.exp(shifted)                     # all values in range (0, 1]
+    return exp_scores / exp_scores.sum(dim=-1, keepdim=True)
 
 
 def attention_fp32(

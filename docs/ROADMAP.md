@@ -22,18 +22,16 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Binary vector format implemented and tested in both languages
   - `make` and `make test` working
 
-▶ **YOU ARE HERE**
-
-- [ ] **F0.2** — FP32 attention reference (`reference/attention_ref.py`) *(3 h)*
+- [x] **F0.2** — FP32 attention reference (`reference/attention_ref.py`) *(3 h)*
   - Single-head attention: `softmax(QKᵀ / √d) · V`, with no `nn.Module` dependencies
   - Validate against `torch.nn.functional.scaled_dot_product_attention`
   - Configurable in `N` and `d`; fixed seed for reproducibility
 
+▶ **YOU ARE HERE**
+
 - [ ] **F0.3** — INT8 quantization scheme (`reference/quantize.py`) *(4 h)*
   - Symmetric per-tensor scales for Q, K, V; INT32 accumulator
-  - Decide and **document in DECISIONS.md** how softmax is handled: the exponential is not
-    linear, so either it's done in fixed point with a LUT, or it gets requantized. This is the
-    most important design decision of the phase — don't take it lightly
+  - Decide and **document in DECISIONS.md** how softmax is handled: the exponential is not linear, so either it's done in fixed point with a LUT, or it gets requantized. This is the most important design decision of the phase — don't take it lightly
   - Measure the error against FP32 and set the tolerance that validation will use
 
 - [ ] **F0.4** — Full golden vector generation *(3 h)*

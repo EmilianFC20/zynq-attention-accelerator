@@ -27,12 +27,12 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Validate against `torch.nn.functional.scaled_dot_product_attention`
   - Configurable in `N` and `d`; fixed seed for reproducibility
 
-▶ **YOU ARE HERE**
-
-- [ ] **F0.3** — INT8 quantization scheme (`reference/quantize.py`) *(4 h)*
+- [x] **F0.3** — INT8 quantization scheme (`reference/quantize.py`) *(4 h)*
   - Symmetric per-tensor scales for Q, K, V; INT32 accumulator
   - Decide and **document in DECISIONS.md** how softmax is handled: the exponential is not linear, so either it's done in fixed point with a LUT, or it gets requantized. This is the most important design decision of the phase — don't take it lightly
   - Measure the error against FP32 and set the tolerance that validation will use
+
+▶ **YOU ARE HERE**
 
 - [ ] **F0.4** — Full golden vector generation *(3 h)*
   - Extend `gen_vectors.py` to also dump the expected output and the scales
@@ -65,7 +65,8 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - The hardest task of the phase; the rescaling is where bugs slip in
 
 - [ ] **F0.10** — Numerical validation against the golden vectors *(4 h)*
-  - Both dataflows must match the INT8 reference within the F0.3 tolerance
+  - Both dataflows must match the INT8 reference **bit for bit** (D-007; the F0.3 measurement
+    is an accuracy figure for `RESULTS.md`, not a pass threshold)
   - `make test` runs the full validation and fails loudly on a mismatch
   - **Without this, the project has no value.** It is literally the central argument
 

@@ -8,9 +8,55 @@ Every result must include how to reproduce it.
 
 ---
 
-## Status: Phase 0 in progress (F0.1 complete)
+## Status: Phase 0 in progress (F0.1–F0.3 complete)
 
-Nothing has been measured yet. The tables below are ready to be filled in.
+The first measured result is R-0 below. Everything else is still `TBD`.
+
+---
+
+## R-0 — INT8 quantization error against the FP32 reference
+
+*Task: F0.3 · Status: **measured***
+
+Reproduce with:
+
+```bash
+python3 reference/attention_int8.py
+```
+
+Configuration: single head, symmetric per-tensor abs-max scales (D-008), integer softmax with a
+256-entry `exp2` table (D-004), UINT8 probabilities (D-006), 8 fractional bits through the output
+normalization (D-009). Inputs are `N(0,1)` at seed `0xC0FFEE`.
+
+| N | d | max abs error | RMS error | RMS / output σ |
+|---|---|---|---|---|
+| 8 | 8 | 1.431e-02 | 5.049e-03 | 1.44% |
+| 32 | 16 | 1.593e-02 | 4.062e-03 | 1.49% |
+| 128 | 64 | 1.060e-02 | 2.269e-03 | 1.58% |
+| 256 | 64 | 9.796e-03 | 1.817e-03 | 1.79% |
+| 512 | 64 | 9.587e-03 | 1.453e-03 | 2.09% |
+
+The absolute error *falls* with N while the relative error rises, which is not a contradiction:
+attention averages over N values, so the output's own magnitude shrinks as N grows. The last
+column is the one that is comparable across rows.
+
+**Where the error comes from** (relative RMS, by ablation):
+
+| N, d | input quantization | + integer softmax | + UINT8 probabilities |
+|---|---|---|---|
+| 128, 64 | 0.0146 | 0.0146 | 0.0158 |
+| 256, 64 | 0.0162 | 0.0162 | 0.0179 |
+| 512, 64 | 0.0179 | 0.0180 | 0.0209 |
+
+Rounding Q, K and V onto the INT8 grid accounts for ~90% of the total. The integer softmax
+contributes nothing measurable at four decimal places — the shift-plus-table `exp2` path is as
+accurate as float `exp()` at this precision — and requantizing the probabilities to UINT8 adds the
+remaining ~10%. The full reasoning, including the `exp2` table-size sweep that confirmed 256
+entries, is in D-008.
+
+**This is a measurement, not a pass/fail threshold.** Per D-007, the C++ model and the RTL are
+verified *bit-exactly* against this integer pipeline; how far that pipeline sits from FP32 is a
+property of the design, reported here.
 
 ---
 

@@ -48,6 +48,9 @@ class Int8Attention:
     scores_int: np.ndarray      # (N, N) int32  — exact q8 @ k8^T
     probs_uint8: np.ndarray     # (N, N) uint8  — unnormalized exponentials, D-006
     row_sums: np.ndarray        # (N, 1) int    — l = sum p8, the softmax denominators
+    q8: np.ndarray              # (N, d) int8   — the quantized inputs the accelerator receives
+    k8: np.ndarray              # (N, d) int8
+    v8: np.ndarray              # (N, d) int8
     scale_q: float
     scale_k: float
     scale_v: float
@@ -104,6 +107,9 @@ def attention_int8(
         scores_int=scores_int,
         probs_uint8=probs_uint8,
         row_sums=row_sums,
+        q8=q8,
+        k8=k8,
+        v8=v8,
         scale_q=scale_q,
         scale_k=scale_k,
         scale_v=scale_v,

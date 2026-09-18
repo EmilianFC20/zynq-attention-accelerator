@@ -405,6 +405,52 @@ Phase 1 surprise.
 
 ---
 
+## D-010 — The vector sets carry derived integers, not quantization scales
+
+**Date:** 2026-09-17 · **Status:** accepted
+
+**Decision.** `params.bin` transmits the `(M, shift)` pair that feeds the exponent path as INT32,
+already derived on the Python side. The quantization scales `s_q`, `s_k`, `s_v` are **not** written
+to any `.bin`; they stay in `meta.json`, which the simulator does not read. Alongside `(M, shift)`,
+the file carries the five width constants of D-004 and D-009 — not so the model can configure
+itself from them, but so it can check its own compiled-in constants against the claim the vectors
+make.
+
+**Why.** Three reasons, in descending order of weight.
+
+*It is what the hardware does.* The accelerator has no floating-point unit — that is the premise of
+the whole design. In Phase 2 the ARM core calibrates, picks the scales and folds them into
+`(M, shift)`; the fabric only ever sees integers. A model that re-derives a multiplier from a float
+scale is modelling something the silicon cannot do, and the RTL of Phase 1 could not follow it
+there.
+
+*Re-deriving does not survive the boundary.* ZAAV carries float32 (D-001) while the scales are
+computed in float64, so C++ would re-derive from a degraded number. Over 200,000 random scale
+pairs, `derive_multiplier` disagreed with itself on **0.135%** of them depending on which precision
+it started from. Two further divergence paths exist: the four float multiplies inside
+`derive_score_multiplier` are order-sensitive, and Python's `round()` breaks ties to even while C's
+`std::round` breaks them away from zero. D-007 asks for bit-exactness, and a 1-in-750 mismatch rate
+is the worst possible failure — rare enough to pass `smoke` and `small`, common enough to eventually
+appear.
+
+*Nothing downstream needs the scales.* Dequantization is host work, and the F0.10 comparison is
+integer against integer. Their only use is printing a result in real units for a human, which
+`meta.json` already serves.
+
+**Alternatives rejected.** Writing the three scales as float32 and letting the C++ model call its
+own `derive_multiplier` — self-describing, but it buys that property with the divergence above and
+asks the model to perform an operation the hardware cannot. Writing both — no correctness
+objection, but a float32 `scales.bin` that nothing reads is a file that will silently rot; it can be
+added the day the simulator has a reason to print real units.
+
+**Consequence.** A vector set now describes exactly one hardware configuration. Changing
+`MULT_BITS`, `OUT_FRAC_BITS` or any D-004 width means regenerating every set, and a model built for
+different constants must refuse to run rather than adapt. The scales are no longer recoverable from
+the binaries alone — `meta.json` is the only record, so it stops being purely decorative even though
+no program parses it.
+
+---
+
 <!--
 Template for new entries:
 

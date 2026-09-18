@@ -1,4 +1,4 @@
-# zynq-attention-accelerator
+# Zynq Attention Accelerator
 
 **An INT8 attention accelerator, co-designed from a cycle-accurate C++ model down to RTL on a Zynq-7000 SoC and verified to match at every step.**
 

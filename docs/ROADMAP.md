@@ -32,12 +32,12 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Decide and **document in DECISIONS.md** how softmax is handled: the exponential is not linear, so either it's done in fixed point with a LUT, or it gets requantized. This is the most important design decision of the phase — don't take it lightly
   - Measure the error against FP32 and set the tolerance that validation will use
 
-▶ **YOU ARE HERE**
-
-- [ ] **F0.4** — Full golden vector generation *(3 h)*
+- [x] **F0.4** — Full golden vector generation *(3 h)*
   - Extend `gen_vectors.py` to also dump the expected output and the scales
   - Vector sets: `smoke` (N=8, d=8), `small` (N=128, d=64), `full` (N=1024, d=64)
   - Document in `vectors/README.md` what each set contains
+
+▶ **YOU ARE HERE**
 
 - [ ] **F0.5** — Simulator core: config, tensors, execution skeleton *(4 h)*
   - Load golden vectors into the model and check shapes against the config

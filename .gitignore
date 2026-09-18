@@ -4,6 +4,7 @@
 CLAUDE.md
 .claude/
 JOURNAL.md
+notes/
 
 # C++ model build artifacts
 model/build/

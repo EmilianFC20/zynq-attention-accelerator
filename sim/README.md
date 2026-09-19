@@ -21,9 +21,12 @@ what matters is **being able to explain the difference**. That analysis goes to
 
 ## Requirements
 
-Verilator is not installed (task F1.1):
+Verilator 5.x or later (task F1.1). The RTL is SystemVerilog (D-011), which the 4.x releases
+shipped by older distributions do not handle well:
 
 ```bash
-sudo apt install verilator
-verilator --version
+verilator --version   # must report 5.x or later
 ```
+
+The UVM testbench for the softmax unit (tasks F1.5b–F1.5d) runs on the Vivado simulator (xsim),
+not Verilator.

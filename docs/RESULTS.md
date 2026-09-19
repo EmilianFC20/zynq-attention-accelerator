@@ -134,3 +134,14 @@ hiding it.
 
 Closing the loop: the Phase 0 model predicted X, the silicon delivered Y. This comparison is what
 turns the project into a co-design story instead of three projects glued together.
+
+## R-8 — Softmax unit: UVM functional coverage
+
+*Task: F1.5d · Status: TBD*
+
+| Covergroup | Bins | Hit | % |
+|---|---|---|---|
+| TBD | | | |
+
+Transactions run, seeds used, mismatches found against the C++ model (and what caused each), and
+any bin that was proven unreachable with the reason why.

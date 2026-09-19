@@ -90,15 +90,33 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 
 ---
 
-## Phase 1 — Verified RTL (~60 h, Sep–Oct 2026)
+## Phase 1 — Verified RTL (~81 h, Sep–Nov 2026)
 
 > At 5–10 h/week. The goal is not a complete accelerator: it is **RTL that matches the model**.
+> The RTL is synthesizable SystemVerilog, and the softmax unit gets a UVM testbench (D-011).
 
-- [ ] **F1.1** — Install and smoke-test Verilator (`sudo apt install verilator`) *(2 h)*
-- [ ] **F1.2** — Single PE in Verilog: INT8 MAC with INT32 accumulator + testbench *(4 h)*
+- [ ] **F1.1** — Install and smoke-test Verilator **5.x** *(2 h)*
+  - The Ubuntu 22.04 package (4.038) is too old for SystemVerilog `interface`s and SVA; build
+    from source or use a newer distro package
+- [ ] **F1.2** — Single PE in SystemVerilog: INT8 MAC with INT32 accumulator + testbench *(4 h)*
+  - Width constants in a shared `package`, not repeated per module
 - [ ] **F1.3** — Parameterizable 12×12 systolic array *(8 h)*
 - [ ] **F1.4** — On-chip buffers and tile-load state machine *(8 h)*
 - [ ] **F1.5** — Fixed-point online softmax unit *(10 h)*
+- [ ] **F1.5a** — SVA pass over the RTL written so far *(3 h)*
+  - Handshake stability, no accumulator overflow, FSM legality, SRAM capacity cap
+  - Every assertion must fire at least once on a deliberately broken input (an assertion that
+    has never failed has never been tested)
+- [ ] **F1.5b** — UVM environment for the softmax unit on xsim: agent and sequences *(8 h)*
+  - Interface, driver, monitor, sequencer; directed sequences first, then constrained-random
+  - Requires Vivado installed (pulls that Phase 2 gate forward)
+- [ ] **F1.5c** — DPI-C scoreboard backed by the C++ model *(5 h)*
+  - Expose the C++ softmax with a C ABI; the scoreboard compares bit for bit (D-007)
+  - A single seeded mismatch must fail the run loudly
+- [ ] **F1.5d** — Functional coverage and closure report *(5 h)*
+  - Covergroups: running-max updates / rescale events, all-equal scores, `exp2` table
+    underflow, D-009 rounding boundary, back-pressure
+  - Measured coverage goes to `RESULTS.md` (R-8); unreachable bins are documented, not deleted
 - [ ] **F1.6** — Full datapath integration *(8 h)*
 - [ ] **F1.7** — Verilator co-simulation: RTL vs C++ model on the same vectors *(10 h)*
 - [ ] **F1.8** — Cycle-accuracy match report and discrepancy analysis *(6 h)*
@@ -130,6 +148,6 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 | Risk | Mitigation |
 |---|---|
 | The semester eats all available time starting August 24 | Phase 0 is finished before then and is already presentable on its own |
-| Vivado isn't installed and is a huge download (~100 GB) | It's a Phase 2 gate, not a Phase 0 one. Start the download in September |
+| Vivado isn't installed and is a huge download (~100 GB) | Needed from F1.5b (xsim for UVM, D-011), not Phase 0. Start the download in September |
 | Fixed-point softmax turns out harder than expected (F0.3, F1.5) | This is the real technical risk of the project. If it stalls, document the dead end — an honest analysis of why something is hard is technical signal too |
 | The F1.7 co-simulation reveals large discrepancies | That *is* the result, not a failure. Analyze and report the cause |

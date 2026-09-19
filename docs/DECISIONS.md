@@ -451,6 +451,65 @@ no program parses it.
 
 ---
 
+## D-011 — RTL in synthesizable SystemVerilog; UVM verification of the softmax unit
+
+**Date:** 2026-09-18 · **Status:** accepted
+
+**Decision.** Three commitments for Phase 1:
+
+1. **The RTL is written in the synthesizable subset of SystemVerilog**, not Verilog-2001:
+   `logic`, `always_ff` / `always_comb`, a `package` holding the D-004 / D-006 / D-009 width
+   constants, `typedef enum` for state machines, `typedef struct packed` where a bundle of fields
+   travels together, and `interface`s for the streaming ports.
+2. **Protocol and datapath invariants are stated as SVA** (SystemVerilog Assertions) bound to the
+   RTL: valid/ready handshake stability, no accumulator overflow, FSM legality, and the SRAM
+   capacity cap of F0.7.
+3. **The online-softmax unit (F1.5) gets a UVM testbench** running on the Vivado simulator (xsim).
+   Its scoreboard does not use a hand-written SystemVerilog model: it calls **the C++ simulator's
+   softmax through DPI-C**, and compares bit for bit (D-007). Stimulus is constrained-random,
+   and completeness is measured with covergroups, not asserted by test count.
+
+The full-accelerator co-simulation of F1.7 stays on Verilator, which is unchanged in purpose.
+
+**Why.** *The reference model already exists and is already trusted.* The project's verification
+chain is PyTorch reference → C++ model → RTL, each link bit-exact. A UVM scoreboard built around a
+second, SystemVerilog re-implementation of the softmax would introduce a fourth model that
+itself needs verifying. Importing the C++ model through DPI-C keeps a single source of truth: the
+same code that F0.10 validates against the golden vectors is the code that judges the RTL.
+
+*The softmax unit is where directed tests run out.* The array is a regular structure whose bugs
+tend to show up on any input. The softmax unit is not: its failures live in specific corners — a
+new running maximum that forces rescaling of the partial accumulators, scores that are all equal,
+differences that fall off the end of the `exp2` table, the rounding boundary of D-009. Those are
+exactly the conditions constrained-random stimulus is built to reach and covergroups are built to
+prove were reached. It is also the block the roadmap already identifies as the main technical risk.
+
+*Scope is deliberately one block.* A UVM environment for the whole accelerator (AXI agents, a
+memory model, end-to-end sequences) is a Phase 2 sized effort on its own. One block, verified
+thoroughly, demonstrates the methodology; the full-system check is F1.7's job.
+
+*SystemVerilog costs nothing in synthesis.* Vivado and Verilator 5 both accept the synthesizable
+subset above. `always_comb` and `always_ff` let the tools flag an inferred latch or a
+combinational block driven from a clock edge, which plain `always @*` silently accepts.
+
+**Alternatives rejected.** **Verilog-2001 for the RTL** — no benefit, and it forgoes the latch and
+intent checks. **UVM on Verilator** — Verilator 5 can compile much of SystemVerilog, but running
+the UVM library on it is not yet dependable enough to build a result on. **cocotb + pyuvm** — a
+reasonable methodology, but it would put Python on the verification critical path, which the
+project reserves for reference generation and plots; it is also not the language a DV team
+interviews for. **A commercial simulator (Xcelium, VCS, Questa)** — better UVM and coverage
+tooling, but not reproducible by a reader without a license. xsim ships with Vivado, which
+Phase 2 requires anyway.
+
+**Consequence.** The softmax unit is verified twice: by the UVM environment in xsim and as part of
+the F1.7 co-simulation in Verilator. The C++ softmax must be callable as a standalone function
+with a C ABI, which constrains how F0.9 structures it. Verilator must be version 5 or later.
+xsim is slow compared with Verilator, so the UVM regression is sized in transactions, not in full
+`N=1024` attention problems. The coverage model is a claim about what "done" means for this block;
+if a coverage bin turns out unreachable, that is documented rather than removed.
+
+---
+
 <!--
 Template for new entries:
 

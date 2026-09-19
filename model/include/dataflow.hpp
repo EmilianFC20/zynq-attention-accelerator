@@ -9,6 +9,7 @@
 #include <string>
 
 #include "config.hpp"
+#include "datapath.hpp"
 #include "dram.hpp"
 #include "pe_array.hpp"
 #include "sram.hpp"
@@ -18,7 +19,7 @@
 namespace zaa {
 
 struct DataflowResult {
-    Tensor output;  // (N, d) int8
+    Tensor output;  // (N, d) int32 — 16-bit values with kOutFracBits of fraction, D-009
     Stats stats;
 };
 
@@ -29,7 +30,12 @@ public:
     virtual ~Dataflow() = default;
 
     virtual const char* name() const = 0;
-    virtual DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v) = 0;
+
+    // A dataflow sees only what the accelerator receives: the three INT8 inputs and the datapath
+    // parameters. It never sees the expected output — the thing under test must not have access
+    // to the answer key.
+    virtual DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v,
+                               const DatapathParams& params) = 0;
 
 protected:
     const Config& cfg_;
@@ -45,7 +51,8 @@ class NaiveDataflow : public Dataflow {
 public:
     using Dataflow::Dataflow;
     const char* name() const override { return "naive"; }
-    DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v) override;
+    DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v,
+                       const DatapathParams& params) override;
 };
 
 // Blocked over K/V with online softmax: never materializes S. The running max and sum are updated
@@ -55,7 +62,8 @@ class FlashDataflow : public Dataflow {
 public:
     using Dataflow::Dataflow;
     const char* name() const override { return "flash"; }
-    DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v) override;
+    DataflowResult run(const Tensor& q, const Tensor& k, const Tensor& v,
+                       const DatapathParams& params) override;
 };
 
 // Throws ModelError if the name is neither "naive" nor "flash".

@@ -26,6 +26,11 @@ struct Stats {
 
     uint64_t dram_bytes_total() const { return dram_bytes_read + dram_bytes_written; }
 
+    // Folds in the counters of a phase that runs *after* this one — how the naive dataflow's
+    // three passes compose into one result. It is not a way to combine components that run
+    // concurrently: overlap between DRAM and compute is the dataflow's schedule to account for.
+    Stats& operator+=(const Stats& later);
+
     // Useful MACs / (cycles × available PEs). 1.0 would be a perfectly occupied array.
     double pe_utilization(uint64_t num_pes) const;
 

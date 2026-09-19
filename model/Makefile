@@ -17,7 +17,9 @@ LIB_OBJS  := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRCS))
 TEST_SRCS := $(wildcard tests/*.cpp)
 TEST_BINS := $(patsubst tests/%.cpp,$(BUILD)/tests/%,$(TEST_SRCS))
 
-SMOKE_VECTORS := ../vectors/smoke/q.bin
+# params.bin is the newest file in a set: keying on it regenerates sets that predate the expected
+# output, rather than letting them fail at load time.
+SMOKE_VECTORS := ../vectors/smoke/params.bin
 
 .PHONY: all test run clean vectors
 

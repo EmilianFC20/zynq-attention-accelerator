@@ -19,7 +19,8 @@ namespace zaa {
 // If you half-improve it, the comparison stops meaning anything. If you want a third,
 // intermediate option, add it as a separate dataflow with its own name.
 
-DataflowResult NaiveDataflow::run(const Tensor&, const Tensor&, const Tensor&) {
+DataflowResult NaiveDataflow::run(const Tensor&, const Tensor&, const Tensor&,
+                                   const DatapathParams&) {
     throw NotImplemented("dataflow 'naive' — task F0.8 in docs/ROADMAP.md");
 }
 

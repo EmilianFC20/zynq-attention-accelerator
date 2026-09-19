@@ -34,7 +34,8 @@ namespace zaa {
 // that fits, rather than hard-coding it — that way the F0.11 SRAM budget sweep moves the real
 // variable and not just a decorative parameter.
 
-DataflowResult FlashDataflow::run(const Tensor&, const Tensor&, const Tensor&) {
+DataflowResult FlashDataflow::run(const Tensor&, const Tensor&, const Tensor&,
+                                   const DatapathParams&) {
     throw NotImplemented("dataflow 'flash' — task F0.9 in docs/ROADMAP.md");
 }
 

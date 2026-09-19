@@ -20,6 +20,12 @@ double Stats::arithmetic_intensity() const {
     return static_cast<double>(mac_ops) / static_cast<double>(bytes);
 }
 
+Stats& Stats::operator+=(const Stats& later) {
+    // TODO(human): fold `later` into *this, field by field.
+    (void)later;
+    return *this;
+}
+
 std::string Stats::describe(uint64_t num_pes) const {
     std::ostringstream os;
     os << std::fixed << std::setprecision(3);
@@ -28,6 +34,7 @@ std::string Stats::describe(uint64_t num_pes) const {
        << "  dram written      " << dram_bytes_written << " B\n"
        << "  dram total        " << dram_bytes_total() << " B\n"
        << "  macs              " << mac_ops << "\n"
+       << "  pe idle cycles    " << pe_idle_cycles << "\n"
        << "  pe utilization    " << pe_utilization(num_pes) << "\n"
        << "  arith. intensity  " << arithmetic_intensity() << " MAC/B\n"
        << "  sram peak         " << sram_peak_bytes << " B";

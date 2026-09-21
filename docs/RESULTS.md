@@ -48,10 +48,13 @@ column is the one that is comparable across rows.
 | 256, 64 | 0.0162 | 0.0162 | 0.0179 |
 | 512, 64 | 0.0179 | 0.0180 | 0.0209 |
 
-Rounding Q, K and V onto the INT8 grid accounts for ~90% of the total. The integer softmax
-contributes nothing measurable at four decimal places — the shift-plus-table `exp2` path is as
-accurate as float `exp()` at this precision — and requantizing the probabilities to UINT8 adds the
-remaining ~10%. The full reasoning, including the `exp2` table-size sweep that confirmed 256
+Rounding Q, K and V onto the INT8 grid is the dominant source, accounting for 86–92% of the
+total. The integer softmax is nearly free: it changes nothing at four decimal places for N ≤ 256
+and adds 0.0001 at N = 512, so the shift-plus-table `exp2` path tracks float `exp()` closely.
+Requantizing the probabilities to UINT8 accounts for the rest, and its share grows with sequence
+length (8% at N = 128, 14% at N = 512). A likely explanation, not yet measured, is that as N grows
+individual probabilities shrink toward the bottom of the UINT8 range, where the relative rounding
+error is largest. The full reasoning, including the `exp2` table-size sweep that confirmed 256
 entries, is in D-008.
 
 **This is a measurement, not a pass/fail threshold.** Per D-007, the C++ model and the RTL are

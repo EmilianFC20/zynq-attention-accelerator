@@ -37,11 +37,11 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Vector sets: `smoke` (N=8, d=8), `small` (N=128, d=64), `full` (N=1024, d=64)
   - Document in `vectors/README.md` what each set contains
 
-▶ **YOU ARE HERE**
-
-- [ ] **F0.5** — Simulator core: config, tensors, execution skeleton *(4 h)*
+- [x] **F0.5** — Simulator core: config, tensors, execution skeleton *(4 h)*
   - Load golden vectors into the model and check shapes against the config
   - `Stats` struct with cycle, byte, and utilization counters
+
+▶ **YOU ARE HERE**
 
 - [ ] **F0.6** — `PEArray`: R×C systolic array with cycle accounting *(6 h)*
   - INT8 MAC with INT32 accumulator

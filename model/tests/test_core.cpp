@@ -12,6 +12,7 @@
 #include "datapath.hpp"
 #include "golden.hpp"
 #include "simulator.hpp"
+#include "stats.hpp"
 
 namespace {
 
@@ -147,6 +148,40 @@ void test_params() {
         "a params tensor of the wrong dtype throws");
 }
 
+void test_stats_fold() {
+    std::printf("folding the stats of sequential phases\n");
+
+    // Two phases that run one after the other, like the naive dataflow's QKᵀ pass and its softmax
+    // pass. The numbers are arbitrary; what matters is that each field is distinct.
+    zaa::Stats pass1;
+    pass1.cycles = 1000;
+    pass1.dram_bytes_read = 16384;
+    pass1.dram_bytes_written = 65536;
+    pass1.mac_ops = 64000;
+    pass1.pe_idle_cycles = 80000;
+    pass1.sram_peak_bytes = 40960;
+
+    zaa::Stats pass2;
+    pass2.cycles = 400;
+    pass2.dram_bytes_read = 65536;
+    pass2.dram_bytes_written = 65536;
+    pass2.mac_ops = 0;
+    pass2.pe_idle_cycles = 57600;
+    pass2.sram_peak_bytes = 30720;
+
+    zaa::Stats total;
+    total += pass1;  // inside operator+=: this = &total, later = pass1
+    total += pass2;  // inside operator+=: this = &total, later = pass2
+
+    check(total.cycles == 1400, "cycles accumulate");
+    check(total.dram_bytes_read == 81920 && total.dram_bytes_written == 131072,
+          "dram bytes accumulate");
+    check(total.mac_ops == 64000, "mac ops accumulate");
+    check(total.pe_idle_cycles == 137600, "pe idle cycles accumulate");
+    check(total.sram_peak_bytes == 40960, "sram peak is the larger of the two, not the sum");
+    check(pass1.cycles == 1000 && pass2.cycles == 400, "the folded-in phases are left untouched");
+}
+
 void test_skeleton() {
     std::printf("execution skeleton\n");
 
@@ -167,6 +202,7 @@ int main() {
         test_load_smoke();
         test_config_mismatch();
         test_params();
+        test_stats_fold();
         test_skeleton();
     } catch (const std::exception& e) {
         std::printf("\nuncaught exception: %s\n", e.what());

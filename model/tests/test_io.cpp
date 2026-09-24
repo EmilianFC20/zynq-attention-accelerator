@@ -79,6 +79,38 @@ void test_roundtrip() {
     check_throws([&] { (void)loaded.as_int32(); }, "reading int8 as int32 is an error");
 }
 
+// The probabilities of D-006 are UINT8. The values above 127 are the ones that matter: stored
+// under the wrong dtype they come back negative, and P·V silently computes garbage.
+void test_roundtrip_uint8() {
+    std::printf("write/read roundtrip, uint8\n");
+
+    zaa::Tensor original(zaa::Dtype::UInt8, {2, 4});
+    uint8_t* data = original.as_uint8_mut();
+    const uint8_t values[8] = {0, 1, 127, 128, 200, 254, 255, 64};
+    for (std::size_t i = 0; i < original.numel(); ++i) {
+        data[i] = values[i];
+    }
+
+    const std::string path = "build/test_roundtrip_uint8.bin";
+    zaa::write_tensor(path, original);
+    const zaa::Tensor loaded = zaa::read_tensor(path);
+
+    check(loaded.dtype() == zaa::Dtype::UInt8, "uint8 dtype survives the roundtrip");
+    check(loaded.size_bytes() == 8, "uint8 is one byte per element");
+
+    bool identical = true;
+    const uint8_t* b = loaded.as_uint8();
+    for (std::size_t i = 0; i < loaded.numel(); ++i) {
+        if (b[i] != values[i]) {
+            identical = false;
+            break;
+        }
+    }
+    check(identical, "uint8 values above 127 come back unchanged");
+
+    check_throws([&] { (void)loaded.as_int8(); }, "reading uint8 as int8 is an error");
+}
+
 void test_bad_files() {
     std::printf("invalid file detection\n");
 
@@ -141,6 +173,7 @@ int main() {
 
     try {
         test_roundtrip();
+        test_roundtrip_uint8();
         test_bad_files();
         test_python_interop();
         test_config();

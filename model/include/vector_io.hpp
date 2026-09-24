@@ -11,7 +11,9 @@
 //   16      16      dims[4]  (uint32 LE x4)
 //   32      ...     raw C-contiguous little-endian data
 //
-// Any change to the format goes on both sides at once and bumps the version number.
+// Any change to the format goes on both sides at once. A change that alters how existing files
+// are read bumps the version number; a new dtype code is appended to the enum and does not, since
+// every file written before it is still read exactly as before.
 
 #include <cstddef>
 #include <cstdint>
@@ -28,6 +30,9 @@ enum class Dtype : uint32_t {
     Int8 = 0,
     Int32 = 1,
     Float32 = 2,
+    // The softmax probabilities (D-006). Signedness lives in the tensor, not at the call site:
+    // the byte 0xC8 is 200 here and -56 as Int8, and only the dtype says which one is meant.
+    UInt8 = 3,
 };
 
 std::size_t dtype_size(Dtype dt);
@@ -48,10 +53,12 @@ public:
 
     // Typed accessors. They throw ModelError if the dtype doesn't match.
     const int8_t* as_int8() const;
+    const uint8_t* as_uint8() const;
     const int32_t* as_int32() const;
     const float* as_float() const;
 
     int8_t* as_int8_mut();
+    uint8_t* as_uint8_mut();
 
     // "(8, 8) int8" — for readable error messages.
     std::string describe() const;

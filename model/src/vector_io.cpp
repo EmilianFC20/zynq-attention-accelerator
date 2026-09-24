@@ -32,6 +32,8 @@ std::size_t dtype_size(Dtype dt) {
             return 4;
         case Dtype::Float32:
             return 4;
+        case Dtype::UInt8:
+            return 1;
     }
     throw ModelError("unknown dtype");
 }
@@ -44,6 +46,8 @@ const char* dtype_name(Dtype dt) {
             return "int32";
         case Dtype::Float32:
             return "float32";
+        case Dtype::UInt8:
+            return "uint8";
     }
     return "?";
 }
@@ -75,6 +79,20 @@ int8_t* Tensor::as_int8_mut() {
         throw ModelError("asked for int8 but the tensor is " + std::string(dtype_name(dtype_)));
     }
     return reinterpret_cast<int8_t*>(raw_.data());
+}
+
+const uint8_t* Tensor::as_uint8() const {
+    if (dtype_ != Dtype::UInt8) {
+        throw ModelError("asked for uint8 but the tensor is " + std::string(dtype_name(dtype_)));
+    }
+    return raw_.data();
+}
+
+uint8_t* Tensor::as_uint8_mut() {
+    if (dtype_ != Dtype::UInt8) {
+        throw ModelError("asked for uint8 but the tensor is " + std::string(dtype_name(dtype_)));
+    }
+    return raw_.data();
 }
 
 const int32_t* Tensor::as_int32() const {
@@ -128,7 +146,8 @@ Tensor read_tensor(const std::string& path) {
     }
 
     const uint32_t dtype_code = read_u32_le(header + 8);
-    if (dtype_code > static_cast<uint32_t>(Dtype::Float32)) {
+    // UInt8 is the highest code. A new dtype must move this bound, or its files get rejected.
+    if (dtype_code > static_cast<uint32_t>(Dtype::UInt8)) {
         std::fclose(f);
         throw ModelError(path + ": unknown dtype code " + std::to_string(dtype_code));
     }

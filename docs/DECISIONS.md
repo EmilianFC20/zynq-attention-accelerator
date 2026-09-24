@@ -16,7 +16,7 @@ This file exists to document all the decisions that were made when creating the 
 offset  size    field
 0       4       magic "ZAAV" (ASCII)
 4       4       version (uint32 little-endian, currently 1)
-8       4       dtype   (uint32: 0=int8, 1=int32, 2=float32)
+8       4       dtype   (uint32: 0=int8, 1=int32, 2=float32, 3=uint8)
 12      4       ndim    (uint32, max 4)
 16      16      dims[4] (uint32 ×4, unused dimensions are 1)
 32      ...     raw data, C-contiguous, little-endian

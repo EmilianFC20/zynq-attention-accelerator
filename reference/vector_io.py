@@ -8,7 +8,7 @@ Layout:
     offset  size    field
     0       4       magic "ZAAV"
     4       4       version  (uint32 LE)
-    8       4       dtype    (uint32 LE: 0=int8, 1=int32, 2=float32)
+    8       4       dtype    (uint32 LE: 0=int8, 1=int32, 2=float32, 3=uint8)
     12      4       ndim     (uint32 LE, <= 4)
     16      16      dims[4]  (uint32 LE x4, unused ones are 1)
     32      ...     raw C-contiguous little-endian data
@@ -31,6 +31,7 @@ DTYPE_TO_CODE = {
     np.dtype(np.int8): 0,
     np.dtype(np.int32): 1,
     np.dtype(np.float32): 2,
+    np.dtype(np.uint8): 3,  # softmax probabilities, D-006
 }
 CODE_TO_DTYPE = {code: dt for dt, code in DTYPE_TO_CODE.items()}
 
@@ -38,13 +39,13 @@ CODE_TO_DTYPE = {code: dt for dt, code in DTYPE_TO_CODE.items()}
 def write_tensor(path: str | Path, array: np.ndarray) -> None:
     """Writes `array` to `path` in the ZAAV format.
 
-    The array must be int8, int32, or float32, and have at most 4 dimensions.
+    The array must be int8, int32, float32, or uint8, and have at most 4 dimensions.
     """
     array = np.ascontiguousarray(array)
 
     if array.dtype not in DTYPE_TO_CODE:
         raise ValueError(
-            f"unsupported dtype: {array.dtype}. Supported: int8, int32, float32."
+            f"unsupported dtype: {array.dtype}. Supported: int8, int32, float32, uint8."
         )
     if array.ndim > MAX_DIMS:
         raise ValueError(f"at most {MAX_DIMS} dimensions, got {array.ndim}")

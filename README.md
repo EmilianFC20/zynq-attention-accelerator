@@ -33,7 +33,7 @@ around a claim that is harder to make and worth more:
             ↓  validated against
    C++ cycle-accurate model                 ← predicts cycles and DRAM traffic
             ↓  co-simulated against
-   Verilog RTL                              ← must match the model, cycle for cycle
+   SystemVerilog RTL                        ← must match the model, cycle for cycle
             ↓  deployed as
    PyTorch custom op on the Zynq            ← measured against the model's prediction
 ```
@@ -65,7 +65,7 @@ Full specs and how they constrain the design: [`docs/HARDWARE.md`](docs/HARDWARE
 | `reference/` | PyTorch golden reference and vector generation |
 | `model/` | Cycle-accurate C++ simulator — no external dependencies |
 | `sweeps/` | Design-space sweep configs, plotting scripts, figures |
-| `rtl/` | Verilog accelerator *(Phase 1)* |
+| `rtl/` | SystemVerilog accelerator *(Phase 1)* |
 | `sim/` | Verilator co-simulation against the C++ model *(Phase 1)* |
 | `fpga/` | Vivado project, PYNQ overlay, PyTorch operator *(Phase 2)* |
 | `docs/` | Roadmap, engineering journal, design decisions, results |
@@ -89,7 +89,7 @@ Python (PyTorch + NumPy) is used only for the golden reference, vector generatio
 | Phase | Deliverable | Target |
 |---|---|---|
 | **0** | Cycle-accurate C++ model, validated against PyTorch, with a design-space sweep | Aug 2026 |
-| **1** | Verilog RTL, co-simulated against the model | Sep–Oct 2026 |
+| **1** | SystemVerilog RTL, co-simulated against the model | Sep–Oct 2026 |
 | **2** | End-to-end on the Zynq: PYNQ overlay, PyTorch custom op, measured speedup | Oct–Dec 2026 |
 | **3** | Write-up and analysis | Jan–Feb 2027 |
 

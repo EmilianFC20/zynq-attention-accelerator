@@ -141,7 +141,7 @@ shifting **arithmetically**:
 round_shift(x, s) = (x + (1 << (s−1))) >> s
 ```
 
-This applies identically in the Python reference, the C++ model, and the Verilog. No site is
+This applies identically in the Python reference, the C++ model, and the SystemVerilog RTL. No site is
 allowed to truncate, and no site is allowed to round differently.
 
 **Why.** Truncation loses on average half an LSB *in the same direction every time*. That bias
@@ -155,7 +155,7 @@ three languages, which is what makes the bit-exact comparison of D-007 achievabl
 |---|---|---|
 | Python | `(x + (1 << (s-1))) >> s` | `>>` on negative ints floors — already arithmetic |
 | C++ | `(x + (1 << (s-1))) >> s` | arithmetic shift on signed types is mandated in C++20 |
-| Verilog | `(x + (1 <<< (s-1))) >>> s` | `>>>` with a `signed` operand |
+| SystemVerilog | `(x + (1 <<< (s-1))) >>> s` | `>>>` with a `signed` operand |
 
 **Alternatives rejected.** **Round-half-to-even** (banker's rounding, what IEEE 754 does) is unbiased even on exact ties, but requires tie detection plus an LSB inspection: more logic, and three more opportunities for the implementations to differ subtly. Ties are rare in this datapath.
 The gemmlowp/TFLite requantization path makes the same trade. **Truncation** is rejected on the bias argument above.
@@ -453,16 +453,17 @@ no program parses it.
 
 ## D-011 — RTL in synthesizable SystemVerilog; UVM verification of the softmax unit
 
-**Date:** 2026-09-18 · **Status:** accepted
+**Date:** 2026-09-18 · **Status:** accepted; amended 2026-09-23 (no `interface`s in the RTL, see below)
 
 **Decision.** Three commitments for Phase 1:
 
 1. **The RTL is written in the synthesizable subset of SystemVerilog**, not Verilog-2001:
    `logic`, `always_ff` / `always_comb`, a `package` holding the D-004 / D-006 / D-009 width
    constants, `typedef enum` for state machines, `typedef struct packed` where a bundle of fields
-   travels together, and `interface`s for the streaming ports.
-2. **Protocol and datapath invariants are stated as SVA** (SystemVerilog Assertions) bound to the
-   RTL: valid/ready handshake stability, no accumulator overflow, FSM legality, and the SRAM
+   travels together. Streaming ports are plain ports: a packed struct for the payload, with
+   `valid` and `ready` as separate scalar ports (amendment below).
+2. **Protocol and datapath invariants are stated as SVA** (SystemVerilog Assertions), written in
+   checker modules under `sim/` and attached to the RTL with `bind`: valid/ready handshake stability, no accumulator overflow, FSM legality, and the SRAM
    capacity cap of F0.7.
 3. **The online-softmax unit (F1.5) gets a UVM testbench** running on the Vivado simulator (xsim).
    Its scoreboard does not use a hand-written SystemVerilog model: it calls **the C++ simulator's
@@ -507,6 +508,29 @@ with a C ABI, which constrains how F0.9 structures it. Verilator must be version
 xsim is slow compared with Verilator, so the UVM regression is sized in transactions, not in full
 `N=1024` attention problems. The coverage model is a claim about what "done" means for this block;
 if a coverage bin turns out unreachable, that is documented rather than removed.
+
+**Amendment (2026-09-23): no `interface`s in the RTL.** Commitment 1 originally carried the
+streaming ports as `interface`s. They are replaced by plain ports, for three reasons:
+
+- *`interface` is the least portable construct in the list* across Vivado synthesis, xsim and
+  Verilator, and the one most likely to surface a tool limitation in the middle of Phase 1.
+- *The top level could not use them anyway.* Verilator does not accept interface ports on the
+  top-level module, and the IP packaged for the Zynq block design in Phase 2 needs plain ports.
+  Interfaces would only ever have existed on internal boundaries, behind a plain-port wrapper.
+- *Packed structs give most of the benefit*: one named type per bus, widths taken from the
+  `package`.
+
+What structs cannot do is carry signals in both directions: a packed struct is a single vector
+with a single direction, and `ready` flows against the data. So each stream is a packed struct
+for the payload plus separate `valid` and `ready` ports, following AXI-Stream naming
+(`*_tdata`, `*_tvalid`, `*_tready`) so that the Phase 2 AXI wrapper is a renaming, not a
+redesign.
+
+The second thing an interface offers, a home for protocol checks, moves to `bind`. Assertions
+live in checker modules under `sim/` and are bound to the RTL from there, which keeps `rtl/`
+purely synthesizable with no `` `ifdef `` guards, and keeps the checks separate from the
+design they check. The UVM environment still reaches the DUT through a virtual interface; that
+is testbench-side and unaffected.
 
 ---
 

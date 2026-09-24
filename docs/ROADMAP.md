@@ -96,7 +96,7 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 > The RTL is synthesizable SystemVerilog, and the softmax unit gets a UVM testbench (D-011).
 
 - [ ] **F1.1** — Install and smoke-test Verilator **5.x** *(2 h)*
-  - The Ubuntu 22.04 package (4.038) is too old for SystemVerilog `interface`s and SVA; build
+  - The Ubuntu 22.04 package (4.038) is too old for SVA and much of SystemVerilog-2017; build
     from source or use a newer distro package
 - [ ] **F1.2** — Single PE in SystemVerilog: INT8 MAC with INT32 accumulator + testbench *(4 h)*
   - Width constants in a shared `package`, not repeated per module
@@ -104,6 +104,7 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 - [ ] **F1.4** — On-chip buffers and tile-load state machine *(8 h)*
 - [ ] **F1.5** — Fixed-point online softmax unit *(10 h)*
 - [ ] **F1.5a** — SVA pass over the RTL written so far *(3 h)*
+  - Checker modules under `sim/`, attached with `bind`; no assertions inline in `rtl/` (D-011)
   - Handshake stability, no accumulator overflow, FSM legality, SRAM capacity cap
   - Every assertion must fire at least once on a deliberately broken input (an assertion that
     has never failed has never been tested)

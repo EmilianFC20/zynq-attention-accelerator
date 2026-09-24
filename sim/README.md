@@ -28,5 +28,8 @@ shipped by older distributions do not handle well:
 verilator --version   # must report 5.x or later
 ```
 
+SVA checker modules also live here and are attached to the RTL with `bind` (D-011), so `rtl/`
+stays purely synthesizable.
+
 The UVM testbench for the softmax unit (tasks F1.5b–F1.5d) runs on the Vivado simulator (xsim),
 not Verilator.

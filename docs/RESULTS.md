@@ -148,3 +148,20 @@ turns the project into a co-design story instead of three projects glued togethe
 
 Transactions run, seeds used, mismatches found against the C++ model (and what caused each), and
 any bin that was proven unreachable with the reason why.
+
+## R-9 — ASIC implementation on sky130 (OpenROAD)
+
+*Task: F1.9a / F1.9b · Status: TBD*
+
+| Array | Cell area (µm²) | Area per PE (µm²) | Target clock | WNS (ns) | Fastest clock that closes |
+|---|---|---|---|---|---|
+| 4×4 | TBD | | | | |
+| 12×12 | TBD | | | | |
+
+| Workload | Utilization (from the model) | Total power (mW) | Clock-tree share |
+|---|---|---|---|
+| High utilization | TBD | | |
+| Fill/drain dominated | TBD | | |
+
+The critical path before and after the F1.9b fix, and what the fix cost in latency or area.
+These are sky130 implementation estimates, not silicon measurements.

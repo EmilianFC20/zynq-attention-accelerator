@@ -534,6 +534,37 @@ is testbench-side and unaffected.
 
 ---
 
+## D-013 — The systolic array also goes through an open-source ASIC flow (sky130)
+
+**Date:** 2026-10-02 · **Status:** proposed
+
+**Decision.** After F1.9, the verified systolic array from F1.3 is also implemented with
+OpenROAD-flow-scripts on the SkyWater `sky130hd` platform: Yosys synthesis, floorplan, placement,
+clock-tree synthesis, routing, and OpenSTA timing and power. The flow configuration and Tcl live
+under `asic/`. The scope is the array alone, not the whole accelerator, and there is no tapeout.
+
+**Why.** The FPGA numbers in R-4 describe DSP48E1 and LUT usage on one part, where each MAC lands in
+a hard DSP slice. They say little about what the array costs as logic: area per PE, the clock a
+gate-level datapath reaches, and where its critical path runs. An ASIC flow answers those, and its
+power analysis can consume switching activity from the co-simulation, which turns the model's
+utilization counters into an energy cost: idle PEs during fill and drain still clock their
+registers, and the flow can measure what that costs.
+
+**Alternatives rejected.**
+- *A commercial flow (Design Compiler, Innovus, PrimeTime).* Not licensed for a personal project.
+- *The whole accelerator, buffers included.* The on-chip buffers need SRAM macros; generating them
+  for sky130 (OpenRAM) is a project of its own. The array is where the arithmetic and the timing
+  pressure are.
+- *FPGA results only.* Leaves the area and power questions above unanswered.
+
+**Consequence.** Yosys's SystemVerilog front end is narrower than Vivado's or Verilator's. If it
+rejects a D-011 construct, the flow runs on an `sv2v` conversion of the same source; the RTL is not
+rewritten for the flow. A timing fix that changes latency must be mirrored in the C++ model and
+re-pass F1.7. The flow stays outside CI (D-012), and its numbers are reported as sky130
+implementation estimates, not silicon.
+
+---
+
 <!--
 Template for new entries:
 

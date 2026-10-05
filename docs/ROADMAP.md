@@ -90,7 +90,7 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 
 ---
 
-## Phase 1 — Verified RTL (~81 h, Sep–Nov 2026)
+## Phase 1 — Verified RTL (~92 h, Sep–Nov 2026)
 
 > At 5–10 h/week. The goal is not a complete accelerator: it is **RTL that matches the model**.
 > The RTL is synthesizable SystemVerilog, and the softmax unit gets a UVM testbench (D-011).
@@ -122,6 +122,18 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 - [ ] **F1.7** — Verilator co-simulation: RTL vs C++ model on the same vectors *(10 h)*
 - [ ] **F1.8** — Cycle-accuracy match report and discrepancy analysis *(6 h)*
 - [ ] **F1.9** — Vivado synthesis: resource and timing reports *(4 h)*
+- [ ] **F1.9a** — ASIC implementation of the systolic array on sky130 *(6 h)*
+  - OpenROAD-flow-scripts on the `sky130hd` platform (D-013): Yosys synthesis, floorplan,
+    placement, CTS, routing, OpenSTA timing; flow config and Tcl versioned under `asic/`
+  - Start with a 4×4 instance of the F1.3 array, then 12×12 if the runtime allows
+  - Report cell area, area per PE, WNS/TNS at the target clock, and the fastest clock that closes
+- [ ] **F1.9b** — ASIC timing closure and power *(5 h)*
+  - Read the critical path in the timing report and fix it in the RTL. A fix that changes
+    latency is mirrored in the C++ model and must pass F1.7 again; otherwise report the
+    path and leave the RTL alone
+  - `report_power` with switching activity from a VCD of an F1.7 run: one high-utilization
+    workload and one dominated by fill/drain (small N), to put a power cost on idle PEs
+  - Numbers go to `RESULTS.md` (R-9), with the FPGA figures from R-4 alongside
 
 ## Phase 2 — End-to-end Zynq integration (~50 h, Oct–Dec 2026)
 
@@ -151,4 +163,5 @@ repo has to be presentable. A complete Phase 0 is already presentable.
 | The semester eats all available time starting August 24 | Phase 0 is finished before then and is already presentable on its own |
 | Vivado isn't installed and is a huge download (~100 GB) | Needed from F1.5b (xsim for UVM, D-011), not Phase 0. Start the download in September |
 | Fixed-point softmax turns out harder than expected (F0.3, F1.5) | This is the real technical risk of the project. If it stalls, document the dead end — an honest analysis of why something is hard is technical signal too |
+| Yosys rejects SystemVerilog constructs the RTL uses (F1.9a) | Run the ASIC flow on an `sv2v` conversion of the same source; never fork the RTL for it (D-013) |
 | The F1.7 co-simulation reveals large discrepancies | That *is* the result, not a failure. Analyze and report the cause |

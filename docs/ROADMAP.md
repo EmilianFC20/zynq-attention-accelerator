@@ -41,6 +41,10 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Load golden vectors into the model and check shapes against the config
   - `Stats` struct with cycle, byte, and utilization counters
 
+- [x] **F0.5a** — Continuous integration on GitHub Actions *(1 h)*
+  - Declare the Python dependencies in `requirements.txt`
+  - Run the reference tests and `make test` from a fresh clone on every push, under g++ and clang++
+
 ▶ **YOU ARE HERE**
 
 - [ ] **F0.6** — `PEArray`: R×C systolic array with cycle accounting *(6 h)*

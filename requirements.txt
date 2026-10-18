@@ -1,0 +1,9 @@
+# Python dependencies for the golden reference and vector generation (reference/).
+# The C++ model under model/ needs none of these to build — see docs/DECISIONS.md D-002.
+#
+# PyPI's default torch wheel bundles CUDA (~2 GB). Nothing here needs a GPU, so install the
+# CPU-only build first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+numpy>=2.2,<3
+torch>=2.6,<3

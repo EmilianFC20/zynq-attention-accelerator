@@ -534,6 +534,45 @@ is testbench-side and unaffected.
 
 ---
 
+## D-012 — Continuous integration covers the model and the reference, not the FPGA flow
+
+**Date:** 2026-09-28 · **Status:** accepted
+
+**Decision.** A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and pull
+request to `main`, from a fresh clone: it installs the Python dependencies declared in
+`requirements.txt`, runs the reference's own tests, regenerates the smoke golden vectors, and runs
+`make test` on the C++ model — once with g++ and once with clang++. PyTorch is installed from the
+CPU-only wheel index.
+
+**Why.** The central claim of the project is that each layer matches the one above it. A check
+that only ever runs on the author's machine is weaker evidence than one that runs on a clean
+machine for every commit, where stale vectors on disk, undeclared dependencies or a file that was
+never committed cannot hide a failure. The compiler matrix tests D-002's portability claim
+directly instead of asserting it; it costs nothing because the Makefile already takes `CXX` from
+the environment. The CPU-only torch wheel is a tenth the size of the default CUDA build, and
+nothing in the reference uses a GPU.
+
+This does not weaken D-002. D-002 is about the C++ model: building it still needs only a C++17
+compiler and `make`. The Python dependencies were already there — `make test` has always run the
+reference to generate its vectors — and `requirements.txt` makes them explicit instead of implicit.
+The simulator is the thing being measured and has no dependencies; the oracle that checks it is
+allowed tools.
+
+**Alternatives rejected.**
+- *Committing the golden vectors so CI needs no Python.* Rejected for the reason they are
+  gitignored in the first place: the check should be against the reference as it is now, not
+  against a snapshot of it. A stale snapshot is exactly the failure CI is meant to catch.
+- *Running Vivado, xsim or the board in CI.* Vivado is a licensed multi-gigabyte install and the
+  board is a physical device; neither fits a hosted runner. Synthesis results and on-board
+  measurements are reproduced locally and reported in `docs/RESULTS.md` with how they were
+  obtained.
+
+**Consequence.** Verilator co-simulation (Phase 1) can join this workflow — Verilator 5 is packaged
+for the runner's Ubuntu 24.04 — but the UVM environment on xsim and everything in Phase 2 stays
+outside it. The README has to say so rather than let the badge imply more than it checks.
+
+---
+
 ## D-013 — The systolic array also goes through an open-source ASIC flow (sky130)
 
 **Date:** 2026-10-02 · **Status:** proposed

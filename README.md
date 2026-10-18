@@ -1,5 +1,7 @@
 # Zynq Attention Accelerator
 
+[![CI](https://github.com/EmilianFC20/zynq-attention-accelerator/actions/workflows/ci.yml/badge.svg)](https://github.com/EmilianFC20/zynq-attention-accelerator/actions/workflows/ci.yml)
+
 **An INT8 attention accelerator, co-designed from a cycle-accurate C++ model down to RTL on a Zynq-7000 SoC and verified to match at every step.**
 
 > **Status: Phase 0 in progress (started August 2026).** The architectural model is being built now. No performance numbers are published yet, and none will be until they are measured. See
@@ -83,6 +85,15 @@ make run      # run the simulator on the smoke configuration
 ```
 
 Python (PyTorch + NumPy) is used only for the golden reference, vector generation, and plots.
+`make test` regenerates the golden vectors, so it needs those installed:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU-only build
+pip install -r requirements.txt
+```
+
+Every push runs both test suites from a fresh clone, under g++ and clang++
+([what CI covers and what it doesn't](docs/DECISIONS.md)).
 
 ## Roadmap
 

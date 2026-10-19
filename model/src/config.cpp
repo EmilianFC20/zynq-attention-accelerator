@@ -44,7 +44,8 @@ std::string Config::describe() const {
     std::ostringstream os;
     os << "  problem      N=" << seq_len << "  d=" << head_dim << "\n"
        << "  array        " << array_rows << "x" << array_cols << " PEs ("
-       << (array_rows * array_cols) << " MACs)\n"
+       << (array_rows * array_cols) << " MACs), tile overlap "
+       << (tile_overlap ? "on" : "off") << "\n"
        << "  sram         " << sram_bytes << " bytes (" << (sram_bytes / 1024) << " KB)\n"
        << "  dram         " << dram_bw_bytes_per_cycle << " B/cycle, latency "
        << dram_latency_cycles << " cycles\n"
@@ -90,6 +91,12 @@ Config load_config(const std::string& path) {
             cfg.array_rows = static_cast<uint32_t>(parse_u64(key, value));
         } else if (key == "array_cols") {
             cfg.array_cols = static_cast<uint32_t>(parse_u64(key, value));
+        } else if (key == "tile_overlap") {
+            const uint64_t flag = parse_u64(key, value);
+            if (flag > 1) {
+                throw ModelError(key + ": expected 0 or 1, got '" + value + "'");
+            }
+            cfg.tile_overlap = flag == 1;
         } else if (key == "sram_bytes") {
             cfg.sram_bytes = parse_u64(key, value);
         } else if (key == "dram_bw_bytes_per_cycle") {

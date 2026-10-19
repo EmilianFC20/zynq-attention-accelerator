@@ -45,12 +45,12 @@ repo has to be presentable. A complete Phase 0 is already presentable.
   - Declare the Python dependencies in `requirements.txt`
   - Run the reference tests and `make test` from a fresh clone on every push, under g++ and clang++
 
-▶ **YOU ARE HERE**
-
-- [ ] **F0.6** — `PEArray`: R×C systolic array with cycle accounting *(6 h)*
+- [x] **F0.6** — `PEArray`: R×C systolic array with cycle accounting *(6 h)*
   - INT8 MAC with INT32 accumulator
   - Systolic pipeline fill/drain model (it matters for small N)
   - Counters: total cycles, idle PE cycles, utilization
+
+▶ **YOU ARE HERE**
 
 - [ ] **F0.7** — Memory models: `DramModel` and `SramModel` *(6 h)*
   - DRAM: configurable bandwidth and latency, counters for bytes read/written

@@ -95,6 +95,13 @@ uint8_t* Tensor::as_uint8_mut() {
     return raw_.data();
 }
 
+int32_t* Tensor::as_int32_mut() {
+    if (dtype_ != Dtype::Int32) {
+        throw ModelError("asked for int32 but the tensor is " + std::string(dtype_name(dtype_)));
+    }
+    return reinterpret_cast<int32_t*>(raw_.data());
+}
+
 const int32_t* Tensor::as_int32() const {
     if (dtype_ != Dtype::Int32) {
         throw ModelError("asked for int32 but the tensor is " + std::string(dtype_name(dtype_)));

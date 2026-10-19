@@ -1,16 +1,20 @@
-// Tests for the simulator core: golden set loading, the checks that guard it, and the execution
-// skeleton. The dataflows are still stubs, so nothing here compares numbers — that is F0.10. What
-// is tested is that a mismatched configuration or a foreign vector set is refused by name.
+// Tests for the simulator core: golden set loading, the checks that guard it, the execution
+// skeleton, and the PE array's arithmetic and timing model. The dataflows are still stubs, so no
+// test here compares against the golden output — that is F0.10. What is tested is that a
+// mismatched configuration or a foreign vector set is refused by name, and that the array computes
+// exact integer products in the number of cycles D-014 says it should.
 //
 // No test framework, on purpose: see DECISIONS.md D-002.
 
 #include <cstdio>
+#include <initializer_list>
 #include <string>
 
 #include "common.hpp"
 #include "config.hpp"
 #include "datapath.hpp"
 #include "golden.hpp"
+#include "pe_array.hpp"
 #include "simulator.hpp"
 #include "stats.hpp"
 
@@ -182,6 +186,112 @@ void test_stats_fold() {
     check(pass1.cycles == 1000 && pass2.cycles == 400, "the folded-in phases are left untouched");
 }
 
+// A 2-D tensor from a row-major initializer list, for hand-computed examples.
+template <typename T>
+zaa::Tensor matrix(zaa::Dtype dtype, uint32_t rows, uint32_t cols, std::initializer_list<T> values) {
+    zaa::Tensor t(dtype, {rows, cols});
+    T* data = reinterpret_cast<T*>(t.raw().data());
+    std::size_t i = 0;
+    for (T v : values) {
+        data[i++] = v;
+    }
+    return t;
+}
+
+bool equals(const zaa::Tensor& t, std::initializer_list<int32_t> values) {
+    if (t.dtype() != zaa::Dtype::Int32 || t.numel() != values.size()) {
+        return false;
+    }
+    std::size_t i = 0;
+    for (int32_t v : values) {
+        if (t.as_int32()[i++] != v) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void test_pe_arithmetic() {
+    std::printf("PE array arithmetic\n");
+    using zaa::Dtype;
+
+    zaa::PEArray pes(4, 4);
+    const zaa::Tensor a = matrix<int8_t>(Dtype::Int8, 2, 2, {1, 2, 3, 4});
+    const zaa::Tensor b = matrix<int8_t>(Dtype::Int8, 2, 2, {5, 6, 7, 8});
+    const zaa::Tensor b_t = matrix<int8_t>(Dtype::Int8, 2, 2, {5, 7, 6, 8});
+
+    check(equals(pes.matmul_int8(a, b, false), {19, 22, 43, 50}), "2x2 int8 product");
+    check(equals(pes.matmul_int8(a, b_t, true), {19, 22, 43, 50}),
+          "transpose_b reads b as (P, K), the layout of K in S = Q·Kᵀ");
+
+    // D-006: the same byte is 200 as a probability and -56 as a query element.
+    const zaa::Tensor p8 = matrix<uint8_t>(Dtype::UInt8, 1, 1, {200});
+    const zaa::Tensor q8 = matrix<int8_t>(Dtype::Int8, 1, 1, {static_cast<int8_t>(200)});
+    const zaa::Tensor v = matrix<int8_t>(Dtype::Int8, 1, 1, {-2});
+    check(equals(pes.matmul_int8(p8, v, false), {-400}), "uint8 a is zero-extended");
+    check(equals(pes.matmul_int8(q8, v, false), {112}), "int8 a is sign-extended");
+
+    // Extreme operands: the 9x8 multiplier's corners.
+    const zaa::Tensor a_min = matrix<int8_t>(Dtype::Int8, 1, 1, {-128});
+    const zaa::Tensor p_max = matrix<uint8_t>(Dtype::UInt8, 1, 1, {255});
+    const zaa::Tensor b_min = matrix<int8_t>(Dtype::Int8, 1, 1, {-128});
+    check(equals(pes.matmul_int8(a_min, b_min, false), {16384}), "-128 x -128");
+    check(equals(pes.matmul_int8(p_max, b_min, false), {-32640}), "255 x -128");
+
+    check_throws<zaa::ModelError>([&] { (void)pes.matmul_int8(a, p8, false); },
+                                  "a uint8 b operand is refused (the PE's B port is int8)");
+    check_throws<zaa::ModelError>([&] { (void)pes.matmul_int8(a, v, false); },
+                                  "mismatched inner dimensions are refused");
+
+    // 255 x 127 accumulated 70000 times is 2.27e9, past INT32's 2.15e9.
+    const uint32_t long_k = 70000;
+    zaa::Tensor p_long(Dtype::UInt8, {1, long_k});
+    zaa::Tensor v_long(Dtype::Int8, {long_k, 1});
+    for (uint32_t i = 0; i < long_k; ++i) {
+        p_long.raw()[i] = 255;
+        v_long.raw()[i] = 127;
+    }
+    check_throws<zaa::ModelError>([&] { (void)pes.matmul_int8(p_long, v_long, false); },
+                                  "an accumulator that leaves INT32 is an error, not a wrap");
+}
+
+void test_pe_timing() {
+    std::printf("PE array timing model\n");
+
+    // Per tile on a 4x4 array: compute K + 3 + 3, then 4 cycles of read-out.
+    const zaa::PEArray serial(4, 4, false);
+    const zaa::PEArray overlap(4, 4, true);
+
+    check(serial.matmul_cycles(4, 5, 4) == 15, "one tile: K + (R-1) + (C-1) + R");
+    check(overlap.matmul_cycles(4, 5, 4) == 15, "one tile: overlap has nothing to overlap with");
+
+    // 8x8 output = 4 tiles, K = 8 (per-tile cost 18).
+    check(serial.matmul_cycles(8, 8, 8) == 72, "no overlap: 4 tiles x 18");
+    check(overlap.matmul_cycles(8, 8, 8) == 42, "overlap: a new tile every K cycles, 3 x 8 + 18");
+
+    // K = 2 < R = 4: the next tile waits for the read-out, not the MACs (per-tile cost 12).
+    check(serial.matmul_cycles(8, 2, 8) == 48, "short K, no overlap: 4 x 12");
+    check(overlap.matmul_cycles(8, 2, 8) == 24, "short K, overlap: read-out bound, 3 x 4 + 12");
+
+    // Partial tiles: a 5x7 output needs 2x2 tiles on a 4x4 array, and each one costs the full 13.
+    zaa::PEArray pes(4, 4, false);
+    const zaa::Tensor a(zaa::Dtype::Int8, {5, 3});
+    const zaa::Tensor b(zaa::Dtype::Int8, {3, 7});
+    (void)pes.matmul_int8(a, b, false);
+    check(pes.stats().cycles == 52, "partial tiles cost as much as full ones: 4 x 13");
+    check(pes.stats().mac_ops == 105, "useful MACs count only the real output: 5 x 7 x 3");
+    check(pes.stats().pe_idle_cycles == 52 * 16 - 105, "every other PE-cycle is idle");
+    check(pes.stats().pe_utilization(pes.num_pes()) <= 1.0, "utilization never exceeds 1");
+
+    (void)pes.matmul_int8(a, b, false);
+    check(pes.stats().cycles == 104, "a second matmul adds to the stats");
+    pes.reset();
+    check(pes.stats().cycles == 0 && pes.stats().mac_ops == 0, "reset clears the stats");
+
+    check(!smoke_config().tile_overlap, "overlap is off unless a config turns it on");
+    check(zaa::PEArray(smoke_config()).num_pes() == 16, "the array takes its size from the config");
+}
+
 void test_skeleton() {
     std::printf("execution skeleton\n");
 
@@ -203,6 +313,8 @@ int main() {
         test_config_mismatch();
         test_params();
         test_stats_fold();
+        test_pe_arithmetic();
+        test_pe_timing();
         test_skeleton();
     } catch (const std::exception& e) {
         std::printf("\nuncaught exception: %s\n", e.what());

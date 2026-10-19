@@ -1,8 +1,13 @@
 #pragma once
 
-// R×C systolic array of processing elements. Each PE does one INT8 MAC with an INT32 accumulator.
+// R×C output-stationary systolic array (D-014). Each PE owns one element of the output tile and
+// keeps its INT32 accumulator in place while the operands stream past: rows of A enter from the
+// left edge, columns of B from the top edge, each skewed by one cycle per row or column so that
+// matching operands meet in the right PE.
 //
-// Status: STUB — implement in F0.6.
+// The multiplier is 9-bit signed × 8-bit signed (D-006). The A operand is either INT8 (Q, for
+// S = Q·Kᵀ) or UINT8 zero-extended to 9 bits (the probabilities, for O_acc = P·V); B is always
+// INT8. One PE design serves both of attention's matmuls.
 
 #include <cstdint>
 
@@ -14,27 +19,29 @@ namespace zaa {
 
 class PEArray {
 public:
-    PEArray(uint32_t rows, uint32_t cols);
-    explicit PEArray(const Config& cfg) : PEArray(cfg.array_rows, cfg.array_cols) {}
+    PEArray(uint32_t rows, uint32_t cols, bool tile_overlap = false);
+    explicit PEArray(const Config& cfg)
+        : PEArray(cfg.array_rows, cfg.array_cols, cfg.tile_overlap) {}
 
     uint32_t rows() const { return rows_; }
     uint32_t cols() const { return cols_; }
     uint32_t num_pes() const { return rows_ * cols_; }
+    bool tile_overlap() const { return tile_overlap_; }
 
-    // INT8 matrix multiply with INT32 accumulation, mapped onto the array.
-    // Returns the result and accumulates the cycles spent into `stats()`.
+    // out = a · b, or a · bᵀ when `transpose_b` is set. `a` is (M, K) int8 or uint8; `b` is
+    // (K, P) int8, or (P, K) when transposed. The result is (M, P) int32.
     //
-    // To implement in F0.6. What has to be modeled and is easy to forget:
-    //   - **Pipeline fill and drain.** An R×C systolic array takes ~R+C cycles to fill before it
-    //     produces the first result. For small tiles that cost dominates, and it is exactly what
-    //     makes a larger array not always win.
-    //   - **Partial tiles.** When a dimension isn't a multiple of the array size, the leftover
-    //     PEs do useless work. Those cycles go into `pe_idle_cycles`, they don't get ignored:
-    //     they are the difference between theoretical and real utilization.
-    //   - The cycle accounting has to be defensible against the Phase 1 RTL. If the model says
-    //     1000 cycles and the Verilog says 1400, the F1.7 co-simulation will demand an
-    //     explanation for where those 400 came from.
+    // The arithmetic is exact: every product is accumulated into an INT32 register, and a sum that
+    // leaves the INT32 range throws ModelError. The hardware would wrap silently; the model
+    // refuses to, so an undersized accumulator surfaces as an error rather than a wrong answer.
+    //
+    // Adds the cycles, useful MACs and idle PE-cycles of the operation to `stats()`.
     Tensor matmul_int8(const Tensor& a, const Tensor& b, bool transpose_b);
+
+    // Cycles the array spends on an (M, K)·(K, P) matmul. Separated from the arithmetic so the
+    // dataflows can cost a schedule without computing it, and so the timing model can be tested
+    // on its own. The model is described next to its implementation in pe_array.cpp.
+    uint64_t matmul_cycles(uint64_t m, uint64_t k, uint64_t p) const;
 
     const Stats& stats() const { return stats_; }
     void reset();
@@ -42,6 +49,7 @@ public:
 private:
     uint32_t rows_;
     uint32_t cols_;
+    bool tile_overlap_;
     Stats stats_;
 };
 

@@ -59,6 +59,7 @@ public:
 
     int8_t* as_int8_mut();
     uint8_t* as_uint8_mut();
+    int32_t* as_int32_mut();
 
     // "(8, 8) int8" — for readable error messages.
     std::string describe() const;

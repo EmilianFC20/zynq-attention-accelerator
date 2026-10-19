@@ -604,6 +604,76 @@ implementation estimates, not silicon.
 
 ---
 
+## D-014 — Output-stationary systolic array, with tile overlap as a modeled option
+
+**Date:** 2026-10-04 · **Status:** accepted (read-out cost to be confirmed in F1.3)
+
+**Decision.** The PE array is **output-stationary**: each PE owns one element of an R×C output
+tile and keeps its INT32 accumulator in place while the operands stream past — rows of A from the
+left edge, columns of B from the top, each skewed one cycle per row or column. When a tile's
+reduction finishes, the accumulators shift down the columns and leave the bottom edge, one row per
+cycle. A matmul larger than the array is cut into output tiles computed one after another.
+
+Whether the next tile may start while the previous one is still being read out is a config flag,
+`tile_overlap`, **off by default**. With it on, each PE copies its finished sum into a shadow
+register and starts the next reduction at once.
+
+The model computes the arithmetic exactly and the cycle count from a closed-form timing model
+(`PEArray::matmul_cycles`), rather than stepping every register every cycle.
+
+**Why.** *Neither operand of attention is a weight.* Weight-stationary arrays (the TPU's) preload
+one operand into the PEs and reuse it across many rows of the other. That pays off when the
+stationary operand is a layer's weights, fixed for every input. In attention both matmuls multiply
+activations: S = Q·Kᵀ and O = P·V. Holding K or V stationary means reloading the array for every
+key block, and the reload is amortized only over one block of queries — in the blocked dataflow
+(F0.9), a reload per tile. Output-stationary has no preload: both operands stream, and what stays
+put is the one quantity that is reused K times, the accumulator.
+
+*Narrow wires between PEs.* In a weight-stationary array the partial sums travel from PE to PE, so
+every link carries 32 bits. Here the links carry 9- and 8-bit operands (D-006); 32-bit values move
+only during read-out. On the FPGA that is routing; on the ASIC flow of D-013 it is area and
+switching power.
+
+*The cost is the read-out.* Every tile spends R extra cycles draining its accumulators, on top of
+the R+C-2 cycles of wavefront fill and drain. With d = 64 and a 12×12 array (D-003), S = Q·Kᵀ has a
+reduction of only 64 cycles per tile, so 12 cycles of read-out is not negligible. Shadow registers
+hide most of it, but double the accumulator flip-flops: 144 × 32 = 4,608 more at 12×12, against
+106,400 on the XC7Z020 (`HARDWARE.md`) — affordable, but not free, and more control logic in the
+RTL. Modeling overlap as a flag lets the sweeps measure what it buys before the RTL has to commit
+to it. The default is off because that is the behavior the first RTL implements, and the F1.7
+co-simulation compares against the default configuration.
+
+*A partial tile costs as much as a full one.* When M or P is not a multiple of the array size, the
+PEs beyond the edge of the matrix still sit in the pipeline. The model charges the full tile time
+and books the difference as idle PE-cycles, which is what makes utilization honest at small N.
+
+*Exact arithmetic, refused overflow.* The model accumulates in 64 bits only to detect when a sum
+leaves INT32, and throws instead of wrapping. The hardware would wrap silently; an undersized
+accumulator should surface in the model as an error, not as a wrong answer that the golden
+comparison then has to explain.
+
+*Closed-form timing.* The schedule of an output-stationary array is regular: every tile follows the
+same wavefront, so its cycle count is a function of (M, K, P, R, C) alone. Computing it directly
+keeps the sweeps fast and lets the timing model be tested on its own, separately from the
+arithmetic. A register-level simulation would only be worth its cost if it could be checked
+against something; that something is the RTL, and the F1.7 co-simulation is where the formula
+meets it.
+
+**Alternatives rejected.**
+- *Weight-stationary.* Reloads the array per key block, as above, and widens every inter-PE link
+  to 32 bits.
+- *Overlap always on.* Bakes a design choice into the model before its benefit is measured, and
+  makes the default disagree with the first RTL.
+- *A cycle-stepped PE model.* Slower, and adds no evidence until there is RTL to compare it to.
+
+**Consequence.** The F1.3 RTL is bound to this schedule: if its read-out takes other than R cycles
+per tile, or its fill differs from R+C-2, either the RTL or `matmul_cycles` changes and the
+discrepancy is explained in F1.8. The functional result does not depend on tile order, so the
+model can compute it directly; the dataflows (F0.8, F0.9) cost their schedules by calling
+`matmul_cycles` without having to duplicate the arithmetic.
+
+---
+
 <!--
 Template for new entries:
 

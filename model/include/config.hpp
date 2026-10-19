@@ -16,6 +16,10 @@ struct Config {
     // Systolic array
     uint32_t array_rows = 4;
     uint32_t array_cols = 4;
+    // Whether the array starts the next output tile while the previous one drains (D-014).
+    // Off by default: it is the behavior the first RTL implements, and the co-simulation
+    // compares against the default.
+    bool tile_overlap = false;
 
     // On-chip memory. The working default is 500 KB, not the XC7Z020's full 630 KB: control
     // logic and AXI FIFOs consume BRAM too. See docs/HARDWARE.md.
